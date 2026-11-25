@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Météo Pêche</title>
+  <meta name="description" content="Pression, météo, pluie et niveaux des cours d'eau pour vos coins de pêche.">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef2f0">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1412">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Météo Pêche">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="vendor/chart.umd.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="Tableau de bord">
+      <img src="icons/icon-192.png" alt="" width="28" height="28">
+      <span>Météo Pêche</span>
+    </a>
+    <div class="search">
+      <input id="search" type="search" placeholder="Commune ou code postal" autocomplete="off" enterkeyhint="search" aria-label="Rechercher une commune">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+    <button id="refresh" class="icon-btn" aria-label="Actualiser" title="Actualiser">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </header>
+
+  <main id="view"></main>
+
+  <footer class="foot">
+    Données : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles Météo-France, CC BY 4.0) ·
+    <a href="https://hubeau.eaufrance.fr/" target="_blank" rel="noopener">Hub'Eau</a> /
+    <a href="https://www.vigicrues.gouv.fr/" target="_blank" rel="noopener">Vigicrues</a> ·
+    <a href="https://geo.api.gouv.fr/" target="_blank" rel="noopener">geo.api.gouv.fr</a>.
+    La pression « passée » correspond aux analyses du modèle, pas à un baromètre local.
+  </footer>
+</body>
+</html>
