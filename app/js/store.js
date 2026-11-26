@@ -1,6 +1,7 @@
 // Stockage local (propre à chaque appareil) : favoris, stations suivies, cache des données.
 
 const K = {
+  prefs: 'mp.prefs',
   favs: 'mp.favs',
   stations: 'mp.stations.',
   cache: 'mp.cache.',
@@ -22,6 +23,19 @@ function write(key, value) {
   } catch {
     return false;
   }
+}
+
+/* ---------- Préférences (mode, échelle des graphiques hydro…) ---------- */
+
+export function getPref(name, fallback) {
+  const p = read(K.prefs, {});
+  return p && name in p ? p[name] : fallback;
+}
+
+export function setPref(name, value) {
+  const p = read(K.prefs, {}) || {};
+  p[name] = value;
+  write(K.prefs, p);
 }
 
 /* ---------- Favoris ---------- */

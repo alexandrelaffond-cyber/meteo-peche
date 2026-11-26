@@ -1,6 +1,6 @@
 // Service worker : l'application s'ouvre même sans réseau.
 // Les données météo/hydro sont gardées en cache par l'application elle-même (localStorage).
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = [
   './',
   'index.html',
@@ -12,6 +12,10 @@ const SHELL = [
   'js/astro.js',
   'js/charts.js',
   'js/ui.js',
+  'js/views/common.js',
+  'js/views/dashboard.js',
+  'js/views/peche.js',
+  'js/views/maison.js',
   'vendor/chart.umd.min.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
@@ -37,7 +41,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.includes('/data/')) return; // fichiers de vigilance : toujours le réseau
   // Réseau d'abord (pour recevoir les mises à jour), cache en secours.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' }) // revalide auprès du serveur : les mises à jour arrivent tout de suite
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

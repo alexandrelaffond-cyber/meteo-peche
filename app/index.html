@@ -29,6 +29,10 @@
       <input id="search" type="search" placeholder="Commune ou code postal" autocomplete="off" enterkeyhint="search" aria-label="Rechercher une commune">
       <ul id="search-results" class="search-results" hidden></ul>
     </div>
+    <div class="seg mode-toggle" role="group" aria-label="Mode d'affichage">
+      <button type="button" data-mode="peche" aria-pressed="false" title="Mode Pêche : maintenant et prochaines heures"><span aria-hidden="true">🎣</span><span class="seg-label"> Pêche</span></button>
+      <button type="button" data-mode="maison" aria-pressed="false" title="Mode Maison : historiques et prévisions à 14 jours"><span aria-hidden="true">🏠</span><span class="seg-label"> Maison</span></button>
+    </div>
     <button id="refresh" class="icon-btn" aria-label="Actualiser" title="Actualiser">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>

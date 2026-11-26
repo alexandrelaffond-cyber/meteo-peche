@@ -427,3 +427,103 @@ table.sol { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .month-stats { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 10px; color: var(--text-2); }
 .month-stats b { color: var(--text); }
 .month-stats .pct { display: inline; margin-left: 4px; }
+
+/* ---------- Sélecteurs segmentés (mode, échelle, période) ---------- */
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex: none;
+}
+.seg button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.topbar .seg { background: var(--surface); }
+.topbar .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.topbar .seg button { padding: 7px 10px; }
+@media (max-width: 700px) {
+  .topbar .seg-label { display: none; }
+  .topbar .seg button { font-size: 1.05rem; padding: 5px 9px; }
+  .topbar { gap: 8px; }
+}
+
+.card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 12px; }
+.card-head h2 { margin: 0; }
+.head-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.station-foot .scale-hint { flex-basis: 100%; order: 3; }
+
+/* ---------- Mode Pêche ---------- */
+.pressure-sentence {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-pressure) 12%, var(--surface));
+  font-size: 0.92rem;
+}
+
+.hours {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 62px;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+}
+.hour { scroll-snap-align: start; background: var(--surface-2); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; gap: 2px; font-size: 0.82rem; }
+.hour.midnight { box-shadow: inset 2px 0 0 var(--grid-strong); }
+.h-time { font-weight: 600; color: var(--text-2); }
+.h-icon { font-size: 22px; }
+.h-temp { font-weight: 700; font-size: 0.95rem; }
+.h-rain { color: var(--c-rain); font-weight: 600; }
+.h-rain.dry { color: var(--text-2); font-weight: 400; }
+.h-wind { white-space: nowrap; }
+.h-p { font-size: 0.75rem; color: var(--text-2); border-top: 1px solid var(--border); padding-top: 3px; }
+.h-p.down { color: var(--c-down); font-weight: 600; }
+.h-p.up { color: var(--c-up); font-weight: 600; }
+
+.periods { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.period { display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.period.majeure .p-type { color: var(--accent); font-weight: 700; }
+.period.mineure .p-type { color: var(--text-2); font-weight: 600; }
+.period.current { outline: 2px solid var(--accent); outline-offset: -2px; }
+.period.current .p-when { color: var(--accent); font-weight: 700; }
+.p-when { font-size: 0.85rem; color: var(--text-2); }
+.sol-now { color: var(--accent); font-weight: 600; }
+.ev-list.compact { margin-top: 10px; }
+
+.flow-ctx { color: var(--text-2); }
+.flow-ctx b { color: var(--text); }
+.flow-ctx.très-bas b, .flow-ctx.bas b { color: var(--v3); }
+.flow-ctx.haut b, .flow-ctx.très-haut b { color: var(--c-rain); }
+
+/* ---------- Mode Maison : planificateur ---------- */
+table.plan { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.plan th, .plan td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; vertical-align: middle; }
+.plan thead th { font-size: 0.72rem; color: var(--text-2); font-weight: 600; }
+.plan tbody th { font-weight: 600; }
+.plan tr.far td, .plan tr.far th { opacity: 0.62; }
+.plan .rain { color: var(--c-rain); font-weight: 600; }
+.plan .rain-strong { color: var(--c-rain); font-weight: 800; }
+.plan .p-down { color: var(--c-down); font-weight: 700; }
+.plan .p-up { color: var(--c-up); font-weight: 700; }
+
+@media (max-width: 560px) {
+  .stat-v { font-size: 1.08rem; }
+  .stat { padding: 8px 10px; }
+}
+.more-alerts summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 8px 0 4px; font-size: 0.9rem; }
+.more-alerts .alert-list { margin-top: 6px; }

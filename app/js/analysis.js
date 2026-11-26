@@ -118,6 +118,11 @@ export function rainSummary(fc, now = Date.now()) {
   const iToday = d.time.findIndex((x) => x >= today);
   return {
     passe7j: sumHourly(fc, now - 7 * DAY, now),
+    passe14j: sumHourly(fc, now - 14 * DAY, now),
+    derniereHeure: sumHourly(fc, now - HOUR, now),
+    prochaines6h: sumHourly(fc, now, now + 6 * HOUR),
+    prochaines24h: sumHourly(fc, now, now + DAY),
+    futur14j: sumHourly(fc, now, now + 14 * DAY),
     passe24h: sumHourly(fc, now - DAY, now),
     prochaines48h: sumHourly(fc, now, now + 2 * DAY),
     futur7j: sumHourly(fc, now, now + 7 * DAY),
@@ -244,11 +249,11 @@ export function vigiMeteoFor(mf, dep) {
 
 /* ---------- Orages ---------- */
 
-export function stormDays(fc, now = Date.now()) {
+export function stormDays(fc, now = Date.now(), horizon = 7 * DAY) {
   const { time, weather_code: wc } = fc.hourly;
   const days = new Map();
   for (let i = 0; i < time.length; i++) {
-    if (time[i] < now - HOUR || time[i] > now + 7 * DAY || !isStorm(wc[i])) continue;
+    if (time[i] < now - HOUR || time[i] > now + horizon || !isStorm(wc[i])) continue;
     const d = startOfDay(time[i]);
     const e = days.get(d) || { jour: d, debut: time[i], fin: time[i], grele: false };
     e.fin = time[i];
@@ -260,13 +265,13 @@ export function stormDays(fc, now = Date.now()) {
 
 /* ---------- Alertes pour le tableau de bord ---------- */
 
-export function collectAlerts({ place, fc, hydro = [], vc, mf }, now = Date.now()) {
+export function collectAlerts({ place, fc, hydro = [], vc, mf }, now = Date.now(), horizon = 7 * DAY) {
   const out = [];
   const lieu = place.nom;
 
   if (fc) {
     for (const e of pressureEvents(fc)) {
-      if (e.fin < now || e.debut > now + 7 * DAY) continue;
+      if (e.fin < now || e.debut > now + horizon) continue;
       out.push({
         t: Math.max(e.debut, now),
         niveau: e.kind === 'brutale' ? 'fort' : 'moyen',
@@ -281,7 +286,7 @@ export function collectAlerts({ place, fc, hydro = [], vc, mf }, now = Date.now(
     const d = fc.daily;
     const today = startOfDay(now);
     for (let i = 0; i < d.time.length; i++) {
-      if (d.time[i] < today || d.time[i] > now + 7 * DAY) continue;
+      if (d.time[i] < today || d.time[i] > now + horizon) continue;
       const mm = d.precipitation_sum[i];
       if (mm == null || mm < SEUILS.pluieInfo) continue;
       out.push({
@@ -295,7 +300,7 @@ export function collectAlerts({ place, fc, hydro = [], vc, mf }, now = Date.now(
       });
     }
 
-    for (const s of stormDays(fc, now)) {
+    for (const s of stormDays(fc, now, horizon)) {
       out.push({
         t: Math.max(s.debut, now),
         niveau: 'moyen',
@@ -354,5 +359,127 @@ export function collectAlerts({ place, fc, hydro = [], vc, mf }, now = Date.now(
     }
   }
 
+  return out;
+}
+
+/* ---------- Mode Pêche : court terme ---------- */
+
+/** Variation de pression prévue d'ici `hours` heures. */
+export function pressureAhead(fc, hours, now = Date.now()) {
+  const { time, pressure_msl: p } = fc.hourly;
+  const i = nowIndex(time, now);
+  const j = i + hours;
+  if (j >= p.length || p[i] == null || p[j] == null) return null;
+  return p[j] - p[i];
+}
+
+/** Heures à venir : [{ t, temp, pluie, vent, rafales, dir, code, pression, dp, nuages }]. */
+export function nextHours(fc, n = 18, now = Date.now()) {
+  const h = fc.hourly;
+  const i0 = nowIndex(h.time, now);
+  const out = [];
+  for (let i = i0 + 1; i <= i0 + n && i < h.time.length; i++) {
+    out.push({
+      t: h.time[i],
+      temp: h.temperature_2m[i],
+      pluie: h.precipitation[i],
+      vent: h.wind_speed_10m[i],
+      rafales: h.wind_gusts_10m[i],
+      dir: h.wind_direction_10m[i],
+      code: h.weather_code[i],
+      pression: h.pressure_msl[i],
+      dp: h.pressure_msl[i] - h.pressure_msl[i0],
+      nuages: h.cloud_cover[i],
+    });
+  }
+  return out;
+}
+
+/** Phrase de synthèse sur la pression pour le mode Pêche. */
+export function pressureSentence(fc, now = Date.now()) {
+  const p = pressureNow(fc);
+  const a6 = pressureAhead(fc, 6, now);
+  const a12 = pressureAhead(fc, 12, now);
+  const fmt = (v) => (v == null ? '–' : `${signed(v, 1)} hPa`);
+  const futur = a6 == null ? '' : ` Prévu : ${fmt(a6)} d'ici 6 h, ${fmt(a12)} d'ici 12 h.`;
+  return `${p.trend.label} sur les 3 dernières heures (${fmt(p.d3)}).${futur}`;
+}
+
+/* ---------- Débits : contexte sur 12 mois ---------- */
+
+function quantile(sorted, q) {
+  if (!sorted.length) return null;
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+/** Situe un débit actuel par rapport aux débits journaliers des 12 derniers mois. */
+export function flowContext(daily, current) {
+  const vals = (daily || []).map((p) => p[1]).filter((v) => v != null).sort((a, b) => a - b);
+  if (vals.length < 60 || current == null) return null;
+  const median = quantile(vals, 0.5);
+  const below = vals.filter((v) => v <= current).length;
+  const rang = below / vals.length;
+  let label;
+  if (rang < 0.1) label = 'très bas';
+  else if (rang < 0.3) label = 'bas';
+  else if (rang <= 0.7) label = 'normal';
+  else if (rang <= 0.9) label = 'haut';
+  else label = 'très haut';
+  return {
+    median,
+    p10: quantile(vals, 0.1),
+    p90: quantile(vals, 0.9),
+    min: vals[0],
+    max: vals[vals.length - 1],
+    pctMedian: median > 0 ? current / median : null,
+    rang,
+    label,
+  };
+}
+
+/* ---------- Mode Maison : planificateur ---------- */
+
+/** Une ligne par jour à venir : météo du jour, tendance de pression, pluie, vent. */
+export function dayPlan(fc, days = 14, now = Date.now()) {
+  const d = fc.daily;
+  const h = fc.hourly;
+  const today = startOfDay(now);
+  const out = [];
+  for (let i = 0; i < d.time.length && out.length < days; i++) {
+    const t = d.time[i];
+    if (t < today) continue;
+    const idx = [];
+    for (let k = 0; k < h.time.length; k++) if (h.time[k] >= t && h.time[k] < t + DAY) idx.push(k);
+    const ps = idx.map((k) => h.pressure_msl[k]).filter((v) => v != null);
+    const dp = ps.length > 1 ? ps[ps.length - 1] - ps[0] : null;
+    // Plus forte variation sur 6 h dans la journée.
+    let max6 = 0;
+    for (const k of idx) {
+      if (k >= 6 && h.pressure_msl[k] != null && h.pressure_msl[k - 6] != null) {
+        const v = h.pressure_msl[k] - h.pressure_msl[k - 6];
+        if (Math.abs(v) > Math.abs(max6)) max6 = v;
+      }
+    }
+    out.push({
+      t,
+      i,
+      code: d.weather_code[i],
+      tmin: d.temperature_2m_min[i],
+      tmax: d.temperature_2m_max[i],
+      pluie: d.precipitation_sum[i],
+      vent: d.wind_speed_10m_max[i],
+      rafales: d.wind_gusts_10m_max[i],
+      dir: d.wind_direction_10m_dominant[i],
+      nuages: d.cloud_cover_mean[i],
+      pMoy: ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null,
+      dp,
+      max6,
+      orage: idx.some((k) => isStorm(h.weather_code[k])),
+      lointain: t - today >= 8 * DAY,
+    });
+  }
   return out;
 }

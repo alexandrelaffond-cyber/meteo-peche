@@ -95,13 +95,13 @@ export function getForecast(lat, lon, opts) {
   const la = lat.toFixed(3);
   const lo = lon.toFixed(3);
   return cached(
-    `meteo.${la},${lo}`,
+    `meteo2.${la},${lo}`,
     30 * MIN,
     async () => {
       const url =
         `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}` +
         `&hourly=${HOURLY.join(',')}&daily=${DAILY.join(',')}` +
-        `&past_days=7&forecast_days=8&timezone=Europe%2FParis&timeformat=unixtime&wind_speed_unit=kmh`;
+        `&past_days=14&forecast_days=16&timezone=Europe%2FParis&timeformat=unixtime&wind_speed_unit=kmh`;
       const d = await getJSON(url);
       // Passage des horodatages en millisecondes.
       d.hourly.time = d.hourly.time.map((s) => s * 1000);
@@ -214,19 +214,53 @@ async function fetchSerie(code, grandeur, since) {
   const pts = (d.data || [])
     .filter((o) => o.resultat_obs != null)
     .map((o) => [Date.parse(o.date_obs), o.resultat_obs / 1000]);
-  return thin(pts, 20 * MIN);
+  // Pas de 20 min sur les 3 derniers jours, 1 h au-delà (allège le stockage).
+  const cut = Date.now() - 3 * DAY;
+  return [...thin(pts.filter((p) => p[0] < cut), 60 * MIN), ...thin(pts.filter((p) => p[0] >= cut), 20 * MIN)];
+}
+
+/** Débit moyen journalier sur 13 mois (données élaborées Hub'Eau) : [[t, m³/s], …]. */
+export function getDailyFlows(code, opts) {
+  return cached(
+    'qmj.' + code,
+    12 * 3_600_000,
+    async () => {
+      const start = new Date(Date.now() - 395 * DAY).toISOString().slice(0, 10);
+      const d = await getJSON(
+        `${HUBEAU}/obs_elab?code_entite=${code}&grandeur_hydro_elab=QmnJ&date_debut_obs_elab=${start}` +
+          `&size=500&fields=date_obs_elab,resultat_obs_elab`
+      );
+      return (d.data || [])
+        .filter((o) => o.resultat_obs_elab != null)
+        .map((o) => {
+          const [y, m, dd] = o.date_obs_elab.split('-').map(Number);
+          return [new Date(y, m - 1, dd, 12).getTime(), o.resultat_obs_elab / 1000];
+        })
+        .sort((a, b) => a[0] - b[0]);
+    },
+    opts
+  );
 }
 
 export function getObservations(code, opts) {
   return cached(
-    'hydro.' + code,
+    'hydro30.' + code,
     15 * MIN,
     async () => {
-      const since = new Date(Date.now() - 7 * DAY).toISOString().slice(0, 19) + 'Z';
-      const [H, Q] = await Promise.all([
-        fetchSerie(code, 'H', since).catch(() => []),
-        fetchSerie(code, 'Q', since).catch(() => []),
-      ]);
+      const since = new Date(Date.now() - 30 * DAY).toISOString().slice(0, 19) + 'Z';
+      let failed = 0;
+      const get = (g) =>
+        fetchSerie(code, g, since).catch(async () => {
+          // Une seconde tentative : le serveur Hub'Eau échoue parfois ponctuellement.
+          await new Promise((r) => setTimeout(r, 800));
+          return fetchSerie(code, g, since).catch(() => {
+            failed++;
+            return [];
+          });
+        });
+      const [H, Q] = await Promise.all([get('H'), get('Q')]);
+      // Ne pas mettre en cache un résultat vide dû à une erreur réseau.
+      if (failed && !H.length && !Q.length) throw new Error('Hub\'Eau indisponible');
       return { H, Q };
     },
     opts

@@ -14,8 +14,10 @@ export function num(v, digits = 1) {
 
 export function signed(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return '–';
-  const s = num(Math.abs(v), digits);
-  return (v > 0 ? '+' : v < 0 ? '−' : '±') + s;
+  const f = 10 ** digits;
+  const r = Math.round(v * f) / f;
+  if (r === 0) return '±' + num(0, digits);
+  return (r > 0 ? '+' : '−') + num(Math.abs(r), digits);
 }
 
 const fDay = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric' });
